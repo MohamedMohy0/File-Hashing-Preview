@@ -4,8 +4,9 @@ from firebase_admin import credentials, firestore
 
 # Check if Firebase is already initialized
 if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["gcp_service_account"])
-    firebase_admin.initialize_app(cred)
+    cred_dict = st.secrets["gcp_service_account"]
+    cred = credentials.Certificate(dict(cred_dict))  # Convert TOML to dict
+    firebase_app = initialize_app(cred)
 
 db = firestore.client()
 
