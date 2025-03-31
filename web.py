@@ -1,12 +1,10 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import json
 
 # Check if Firebase is already initialized
 if not firebase_admin._apps:
-    cred_dict = json.loads(st.secrets["gcp_service_account"])
-    cred = credentials.Certificate(cred_dict)
+    cred = credentials.Certificate(st.secrets["gcp_service_account"])
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
