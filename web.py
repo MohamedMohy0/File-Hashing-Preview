@@ -1,6 +1,6 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore,initialize_app
 
 # Check if Firebase is already initialized
 if not firebase_admin._apps:
