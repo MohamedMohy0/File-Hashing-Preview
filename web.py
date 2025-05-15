@@ -17,7 +17,7 @@ def get_drive_link(code):
 
     try:
         doc_ref_hashes = db.collection("Hashes").document(code)
-        doc_ref_num = db.collection("num").document(code)
+        doc_ref_num = db.collection("remain").document(code)
 
         doc_hashes = doc_ref_hashes.get()
         doc_num = doc_ref_num.get()
