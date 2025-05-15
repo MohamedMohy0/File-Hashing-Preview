@@ -2,79 +2,79 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
 
-# تحقق من أن Firebase تم تهيئته مسبقًا
+# تهيئة Firebase إذا لم يكن مهيأ بعد
 if not firebase_admin._apps:
     cred_dict = st.secrets["gcp_service_account"]
-    cred = credentials.Certificate(dict(cred_dict))  # تحويل من TOML إلى dict
+    cred = credentials.Certificate(dict(cred_dict))
     firebase_app = initialize_app(cred)
 
 db = firestore.client()
 
-# دالة جلب الرابط وعدد المحاولات وتحديث الرقم
 def get_drive_link(code):
     if not code:
         return None, "No code entered"
 
-    # جلب مستند من مجموعة Hashes
+    # جلب المستندات من Hashes و num
     doc_ref_hashes = db.collection("Hashes").document(code)
-    doc_hashes = doc_ref_hashes.get()
-
-    # جلب مستند من مجموعة num
     doc_ref_num = db.collection("num").document(code)
+
+    doc_hashes = doc_ref_hashes.get()
     doc_num = doc_ref_num.get()
 
     if not doc_num.exists:
-        return None, "Code is not valid (no num document found)."
+        return None, "Code is not valid (not found in num collection)"
 
-    data_num = doc_num.to_dict()
-    number = data_num.get("number", 0)
+    number = doc_num.to_dict().get("number", 0)
 
     if number <= 0:
         return None, "The code is not valid now"
 
-    # إذا كان الرقم أكبر من صفر، ننقصه ونحدث المستند
+    # تحديث عدد المحاولات
     new_number = number - 1
     doc_ref_num.update({"number": new_number})
 
     if not doc_hashes.exists:
-        return None, "Document not found in Hashes"
+        return None, "Document not found in Hashes collection"
 
-    data = doc_hashes.to_dict()
-    link = data.get("drivelink", "No drive link found")
+    link = doc_hashes.to_dict().get("drivelink", None)
+
+    if not link:
+        return None, "No drive link found"
 
     return link, f"Remaining tries: {new_number}"
 
-# إعدادات الصفحة
+# إعداد واجهة Streamlit
 st.set_page_config(page_title="File Hashing")
-hide_st_style = """
+st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
     </style>
-"""
-st.markdown(hide_st_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <h1 style="text-align: center;">File preview</h1>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("<h1 style='text-align: center;'>File Preview</h1>", unsafe_allow_html=True)
 
-# إدخال الكود من المستخدم
-code = st.text_input("Enter The Code :")
+# إدخال الكود
+code = st.text_input("Enter The Code:")
 link, message = get_drive_link(code)
 
-# عرض رسالة عدد المحاولات أو الخطأ
+# عرض الرسالة للمستخدم
+if message:
+    st.info(message)
 
-
-# معالجة الرابط وتحويله إلى preview
-if link and "view" in link:
-    lim = link.find("view")
-    Url = link[:lim] + "preview"
-else:
-    Url = None
+# تعديل الرابط ليكون بصيغة preview
+Url = None
+if link:
+    if "preview" in link:
+        Url = link
+    elif "view" in link:
+        lim = link.find("view")
+        Url = link[:lim] + "preview"
+    elif "/d/" in link:
+        # تحويل رابط مباشر إلى preview
+        file_id = link.split("/d/")[1].split("/")[0]
+        Url = f"https://drive.google.com/file/d/{file_id}/preview"
 
 # JavaScript لإخفاء واجهة Google Drive
 hide_js = """
@@ -96,20 +96,17 @@ hide_js = """
     </script>
 """
 
-# عرض الـ PDF داخل Iframe
+# إعداد عرض الملف
 pdf_display = f"""
     <iframe src="{Url}" width="700" height="900"
      style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
     {hide_js}
 """
 
-# زر عرض الملف
-button = st.button("Preview")
-if button:
+# زر المعاينة
+if st.button("Preview"):
     with st.spinner("In Progress..."):
         if Url:
-            if message:
-                st.info(message)
             st.markdown(pdf_display, unsafe_allow_html=True)
         else:
-            st.error("Invalid link or document not found.")
+            st.error("Invalid link or no preview available.")
