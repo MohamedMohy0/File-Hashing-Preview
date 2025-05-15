@@ -60,8 +60,7 @@ code = st.text_input("Enter The Code:")
 link, message = get_drive_link(code)
 
 # عرض الرسالة للمستخدم
-if message:
-    st.info(message)
+
 
 # تعديل الرابط ليكون بصيغة preview
 Url = None
@@ -107,6 +106,7 @@ pdf_display = f"""
 if st.button("Preview"):
     with st.spinner("In Progress..."):
         if Url:
+            st.info(message)
             st.markdown(pdf_display, unsafe_allow_html=True)
         else:
             st.error("Invalid link or no preview available.")
