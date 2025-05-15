@@ -1,14 +1,16 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, firestore,initialize_app
+from firebase_admin import credentials, firestore, initialize_app
 
-# Check if Firebase is already initialized
+# تحقق من أن Firebase تم تهيئته مسبقًا
 if not firebase_admin._apps:
     cred_dict = st.secrets["gcp_service_account"]
-    cred = credentials.Certificate(dict(cred_dict))  # Convert TOML to dict
+    cred = credentials.Certificate(dict(cred_dict))  # تحويل من TOML إلى dict
     firebase_app = initialize_app(cred)
 
 db = firestore.client()
+
+# دالة جلب الرابط وعدد المحاولات وتحديث الرقم
 def get_drive_link(code):
     if not code:
         return None, "No code entered"
@@ -42,38 +44,40 @@ def get_drive_link(code):
 
     return link, f"Remaining tries: {new_number}"
 
-
+# إعدادات الصفحة
 st.set_page_config(page_title="File Hashing")
 hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            </style>
-            """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 st.markdown(
     """
-    <h1 style="text-align: center; ">File preview</h1>
-    """, 
+    <h1 style="text-align: center;">File preview</h1>
+    """,
     unsafe_allow_html=True
 )
 
-
-
-code=st.text_input("Enter The Code :")
+# إدخال الكود من المستخدم
+code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
 
 # عرض رسالة عدد المحاولات أو الخطأ
+if message:
+    st.info(message)
 
-
-if "view" in link:
+# معالجة الرابط وتحويله إلى preview
+if link and "view" in link:
     lim = link.find("view")
     Url = link[:lim] + "preview"
 else:
     Url = None
 
+# JavaScript لإخفاء واجهة Google Drive
 hide_js = """
     <script>
         function hideDriveUI() {
@@ -84,28 +88,27 @@ hide_js = """
                     let iframeDoc = iframeWindow.document;
                     if (iframeDoc) {
                         let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
-                        elements.forEach(el => el.style.display = 'none');  // Hide all links, buttons, UI elements
+                        elements.forEach(el => el.style.display = 'none');
                     }
                 }
             }
         }
-        
         setInterval(hideDriveUI, 1000);
     </script>
 """
 
+# عرض الـ PDF داخل Iframe
 pdf_display = f"""
-    <iframe src="{Url}" width="700" height="900" 
-    style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
+    <iframe src="{Url}" width="700" height="900"
+     style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
     {hide_js}
 """
 
+# زر عرض الملف
 button = st.button("Preview")
 if button:
     with st.spinner("In Progress..."):
         if Url:
-            if message:
-                st.info(message)
             st.markdown(pdf_display, unsafe_allow_html=True)
         else:
             st.error("Invalid link or document not found.")
