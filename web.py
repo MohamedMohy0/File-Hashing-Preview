@@ -72,6 +72,8 @@ st.markdown(
 # إدخال الكود من المستخدم
 code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
+st.write("DEBUG - link:", link)
+st.write("DEBUG - message:", message)
 
 # عرض رسالة عدد المحاولات أو الخطأ
 
