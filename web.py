@@ -66,8 +66,7 @@ code=st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
 
 # عرض رسالة عدد المحاولات أو الخطأ
-if message:
-    st.info(message)
+
 
 if "view" in link:
     lim = link.find("view")
@@ -105,6 +104,8 @@ button = st.button("Preview")
 if button:
     with st.spinner("In Progress..."):
         if Url:
+            if message:
+                st.info(message)
             st.markdown(pdf_display, unsafe_allow_html=True)
         else:
             st.error("Invalid link or document not found.")
