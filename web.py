@@ -15,41 +15,34 @@ def get_drive_link(code):
     if not code:
         return None, "No code entered"
 
-    try:
-        doc_ref_hashes = db.collection("Hashes").document(code)
-        doc_ref_num = db.collection("remain").document(code)
+    # جلب مستند من مجموعة Hashes
+    doc_ref_hashes = db.collection("Hashes").document(code)
+    doc_hashes = doc_ref_hashes.get()
 
-        doc_hashes = doc_ref_hashes.get()
-        doc_num = doc_ref_num.get()
+    # جلب مستند من مجموعة num
+    doc_ref_num = db.collection("remain").document(code)
+    doc_num = doc_ref_num.get()
 
-        if not doc_num.exists:
-            return None, "Code not found in num collection"
+    if not doc_num.exists:
+        return None, "Code is not valid (no num document found)."
 
-        data_num = doc_num.to_dict()
-        number = data_num.get("remain", 0)
-        st.write("Current number:", number)
+    data_num = doc_num.to_dict()
+    number = data_num.get("number", 0)
 
-        if number <= 0:
-            return None, "The code is not valid now"
+    if number <= 0:
+        return None, "The code is not valid now"
 
-        # Update attempts
-        new_number = number - 1
-        doc_ref_num.update({"number": new_number})
+    # إذا كان الرقم أكبر من صفر، ننقصه ونحدث المستند
+    new_number = number - 1
+    doc_ref_num.update({"number": new_number})
 
-        if not doc_hashes.exists:
-            return None, "Code not found in Hashes collection"
+    if not doc_hashes.exists:
+        return None, "Document not found in Hashes"
 
-        data = doc_hashes.to_dict()
-        link = data.get("drivelink", None)
-        st.write("Drive link from DB:", link)
+    data = doc_hashes.to_dict()
+    link = data.get("drivelink", "No drive link found")
 
-        if not link:
-            return None, "No drive link found"
-
-        return link, f"Remaining tries: {new_number}"
-
-    except Exception as e:
-        return None, f"Error: {str(e)}"
+    return link, f"Remaining tries: {new_number}"
 
 # إعدادات الصفحة
 st.set_page_config(page_title="File Hashing")
@@ -72,8 +65,6 @@ st.markdown(
 # إدخال الكود من المستخدم
 code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
-st.write("DEBUG - link:", link)
-st.write("DEBUG - message:", message)
 
 # عرض رسالة عدد المحاولات أو الخطأ
 
