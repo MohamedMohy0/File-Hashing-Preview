@@ -9,19 +9,39 @@ if not firebase_admin._apps:
     firebase_app = initialize_app(cred)
 
 db = firestore.client()
-
 def get_drive_link(code):
     if not code:
-        return "No code entered"
+        return None, "No code entered"
 
-    doc_ref = db.collection("Hashes").document(code)
-    doc = doc_ref.get()
-    
-    if doc.exists:
-        data = doc.to_dict()
-        return data.get("drivelink", "No drive link found")
-    else:
-        return "Document not found"
+    # جلب مستند من مجموعة Hashes
+    doc_ref_hashes = db.collection("Hashes").document(code)
+    doc_hashes = doc_ref_hashes.get()
+
+    # جلب مستند من مجموعة num
+    doc_ref_num = db.collection("num").document(code)
+    doc_num = doc_ref_num.get()
+
+    if not doc_num.exists:
+        return None, "Code is not valid (no num document found)."
+
+    data_num = doc_num.to_dict()
+    number = data_num.get("number", 0)
+
+    if number <= 0:
+        return None, "The code is not valid now"
+
+    # إذا كان الرقم أكبر من صفر، ننقصه ونحدث المستند
+    new_number = number - 1
+    doc_ref_num.update({"number": new_number})
+
+    if not doc_hashes.exists:
+        return None, "Document not found in Hashes"
+
+    data = doc_hashes.to_dict()
+    link = data.get("drivelink", "No drive link found")
+
+    return link, f"Remaining tries: {new_number}"
+
 
 st.set_page_config(page_title="File Hashing")
 hide_st_style = """
@@ -43,7 +63,11 @@ st.markdown(
 
 
 code=st.text_input("Enter The Code :")
-link = get_drive_link(code)
+link, message = get_drive_link(code)
+
+# عرض رسالة عدد المحاولات أو الخطأ
+if message:
+    st.info(message)
 
 if "view" in link:
     lim = link.find("view")
