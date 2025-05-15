@@ -26,7 +26,7 @@ def get_drive_link(code):
             return None, "Code not found in num collection"
 
         data_num = doc_num.to_dict()
-        number = data_num.get("number", 0)
+        number = data_num.get("remain", 0)
         st.write("Current number:", number)
 
         if number <= 0:
