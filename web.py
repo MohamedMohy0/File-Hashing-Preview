@@ -5,17 +5,15 @@ from firebase_admin import credentials, firestore, initialize_app
 # تحقق من أن Firebase تم تهيئته مسبقًا
 if not firebase_admin._apps:
     cred_dict = st.secrets["gcp_service_account"]
-    cred = credentials.Certificate(dict(cred_dict))  # تحويل من TOML إلى dict
+    cred = credentials.Certificate(dict(cred_dict))
     firebase_app = initialize_app(cred)
 
 db = firestore.client()
 
-# دالة جلب الرابط وعدد المحاولات وتحديث الرقم
 def get_drive_link(code):
     if not code:
         return None, "No code entered"
 
-    # جلب مستند من مجموعة Hashes
     doc_ref_hashes = db.collection("Hashes").document(code)
     doc_hashes = doc_ref_hashes.get()
     
@@ -28,17 +26,14 @@ def get_drive_link(code):
     if number <= 0:
         return None, "The code is not valid now"
 
-    # إذا كان الرقم أكبر من صفر، ننقصه ونحدث المستند
     new_number = number - 1
     doc_ref_hashes.update({"remain": new_number})
-
 
     data = doc_hashes.to_dict()
     link = data.get("drivelink", "No drive link found")
 
     return link, f"Remaining tries: {new_number}"
 
-# إعدادات الصفحة
 st.set_page_config(page_title="File Hashing")
 hide_st_style = """
     <style>
@@ -56,65 +51,80 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# إدخال الكود من المستخدم
 code = st.text_input("Enter The Code :")
+
 link, message = get_drive_link(code)
 
-# عرض رسالة عدد المحاولات أو الخطأ
-
-# معالجة الرابط وتحويله إلى preview
 if link and "view" in link:
     lim = link.find("view")
     Url = link[:lim] + "preview"
 else:
     Url = None
 
-# JavaScript لإخفاء واجهة Google Drive
 hide_js = """
 <script>
     // منع الزر الأيمن
-    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('contextmenu', e => e.preventDefault());
 
-    // كشف أدوات المطور (DevTools)
-    let threshold = 160;
+    // دالة لإغلاق الصفحة (إعادة التوجيه لصفحة فارغة)
+    function closePage() {
+        window.location.href = "about:blank";
+    }
+
+    // كشف أدوات المطور
+    const threshold = 160;
     setInterval(() => {
-        let widthDiff = window.outerWidth - window.innerWidth;
-        let heightDiff = window.outerHeight - window.innerHeight;
+        const widthDiff = window.outerWidth - window.innerWidth;
+        const heightDiff = window.outerHeight - window.innerHeight;
         if (widthDiff > threshold || heightDiff > threshold) {
-            document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 Developer Tools Detected</h1>";
+            alert("تم اكتشاف محاولة فتح أدوات المطور! سيتم إغلاق الصفحة.");
+            closePage();
         }
     }, 1000);
 
-    // إغلاق الصفحة أو مسحها عند تغيير التبويب
-    document.addEventListener("visibilitychange", function() {
+    // اكتشاف تبديل التبويب أو فقدان التركيز
+    document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
-            document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 Tab Switching is Not Allowed</h1>";
+            alert("تم تبديل التبويب! سيتم إغلاق الصفحة.");
+            closePage();
         }
     });
 
-    // إغلاق عند فقدان التركيز (مثل تصغير النافذة أو التبديل)
     window.addEventListener("blur", () => {
-        document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 Page focus lost</h1>";
+        alert("تم فقدان تركيز الصفحة! سيتم إغلاق الصفحة.");
+        closePage();
     });
+
+    // إخفاء واجهة Google Drive داخل iframe
+    function hideDriveUI() {
+        let iframe = document.querySelector("iframe");
+        if (iframe) {
+            let iframeWindow = iframe.contentWindow;
+            if (iframeWindow) {
+                let iframeDoc = iframeWindow.document;
+                if (iframeDoc) {
+                    let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
+                    elements.forEach(el => el.style.display = 'none');
+                }
+            }
+        }
+    }
+    setInterval(hideDriveUI, 1000);
 </script>
 """
 
-
-# عرض داخل IFrame
-pdf_display = f"""
-    <iframe src="{Url}" width="700" height="900"
-     style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
-    {hide_js}
-"""
-
-
-
-# زر عرض الملف
 button = st.button("Preview")
+
 if button:
-    with st.spinner("In Progress..."):
-        if Url:
-            st.info(message)
-            st.markdown(pdf_display, unsafe_allow_html=True)
-        else:
-            st.error("Invalid link or document not found.")
+    if Url:
+        st.info(message)
+        pdf_display = f"""
+            <iframe src="{Url}" width="700" height="900"
+             style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
+            {hide_js}
+        """
+        st.markdown(pdf_display, unsafe_allow_html=True)
+    else:
+        st.error("Invalid link or document not found.")
+elif code and not button:
+    st.info("اضغط على زر Preview لعرض الملف.")
