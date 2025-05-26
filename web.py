@@ -1,7 +1,13 @@
 import streamlit as st
+
+# يجب أن يكون هذا أول أمر يستخدم Streamlit
+st.set_page_config(page_title="File Hashing")
+
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
 import streamlit.components.v1 as components
+
+# سكربت لتعطيل النقر يمين، F12، وبعض الاختصارات
 components.html("""
     <script>
         // Disable right-click
@@ -60,14 +66,12 @@ def get_drive_link(code):
     new_number = number - 1
     doc_ref_hashes.update({"remain": new_number})
 
-
     data = doc_hashes.to_dict()
     link = data.get("drivelink", "No drive link found")
 
     return link, f"Remaining tries: {new_number}"
 
-# إعدادات الصفحة
-st.set_page_config(page_title="File Hashing")
+# تنسيق إخفاء عناصر Streamlit الافتراضية (القائمة، الهيدر، الفوتر)
 hide_st_style = """
     <style>
     #MainMenu {visibility: hidden;}
@@ -87,8 +91,6 @@ st.markdown(
 # إدخال الكود من المستخدم
 code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
-
-# عرض رسالة عدد المحاولات أو الخطأ
 
 # معالجة الرابط وتحويله إلى preview
 if link and "view" in link:
