@@ -72,10 +72,15 @@ else:
 # JavaScript لإخفاء واجهة Google Drive
 hide_js = """
 <script>
-    // ========== منع الزر الأيمن ==========
+    // إغلاق الصفحة عبر استبدال المحتوى برسالة حظر
+    function blockPage(reason) {
+        document.body.innerHTML = `<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 ${reason}</h1>`;
+    }
+
+    // منع الزر الأيمن
     document.addEventListener('contextmenu', event => event.preventDefault());
 
-    // ========== اكتشاف فتح DevTools ==========
+    // اكتشاف فتح DevTools
     let devtoolsOpen = false;
     const threshold = 160;
     setInterval(() => {
@@ -84,16 +89,24 @@ hide_js = """
         if (widthThreshold || heightThreshold) {
             if (!devtoolsOpen) {
                 devtoolsOpen = true;
-                document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 تم كشف أدوات المطور وتم إيقاف الصفحة</h1>";
+                blockPage("تم كشف أدوات المطور وتم إيقاف الصفحة");
             }
         }
     }, 1000);
 
-    // ========== اكتشاف فقدان التركيز (فتح تبويب آخر) ==========
+    // اكتشاف فقدان التركيز (مثل فتح تبويب آخر أو تصغير النافذة)
+    window.addEventListener("blur", () => blockPage("لا يُسمح بالخروج من الصفحة أو تغيير التبويب"));
+
+    // اكتشاف التبديل بين التبويبات (في بعض المتصفحات)
     document.addEventListener("visibilitychange", function() {
         if (document.hidden) {
-            document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 لا يُسمح بفتح التبويبات أو التبديل بينها</h1>";
+            blockPage("تم كشف تبديل التبويب 🚫");
         }
+    });
+
+    // اكتشاف الخروج من الصفحة (بعض الحالات فقط)
+    window.addEventListener("pagehide", function() {
+        blockPage("🚫 لا يُسمح بمغادرة الصفحة");
     });
 </script>
 """
