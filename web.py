@@ -10,7 +10,6 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# دالة جلب الرابط وعدد المحاولات وتحديث الرقم
 def get_drive_link(code):
     if not code:
         return None, "No code entered"
@@ -46,6 +45,41 @@ hide_st_style = """
 """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
+# كود الحماية الأساسي
+protection_js = """
+<script>
+// منع فتح أدوات المطور
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) || 
+        (e.ctrlKey && e.key === 'U') || 
+        (e.metaKey && e.altKey && e.key === 'I')) {
+        e.preventDefault();
+        window.close();
+        document.body.innerHTML = 'غير مسموح بالوصول إلى أدوات المطور';
+    }
+});
+
+// منع النقر الأيمن
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    window.close();
+    document.body.innerHTML = 'غير مسموح باستخدام النقر الأيمن';
+});
+
+// مراقبة تغيير الصفحة
+let currentUrl = window.location.href;
+setInterval(function() {
+    if (window.location.href !== currentUrl) {
+        window.close();
+        document.body.innerHTML = 'غير مسموح بتغيير الصفحة';
+    }
+}, 200);
+</script>
+"""
+
+st.markdown(protection_js, unsafe_allow_html=True)
+
 st.markdown(
     """
     <h1 style="text-align: center;">File preview</h1>
@@ -53,87 +87,40 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# إضافة JavaScript للحماية
-protection_js = """
-<script>
-// مراقبة تغيير حجم النافذة (علامة على فتح أدوات المطور)
-let initialWidth = window.innerWidth;
-let initialHeight = window.innerHeight;
-
-setInterval(function() {
-    if (window.innerWidth !== initialWidth || window.innerHeight !== initialHeight) {
-        window.location.href = "about:blank";
-    }
-}, 100);
-
-// منع فتح أدوات المطور باستخدام اختصار لوحة المفاتيح
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'F12' || 
-        (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-        (e.ctrlKey && e.shiftKey && e.key === 'J') || 
-        (e.ctrlKey && e.key === 'U')) {
-        e.preventDefault();
-        window.location.href = "about:blank";
-    }
-});
-
-// منع النقر بزر الماوس الأيمن
-document.addEventListener('contextmenu', function(e) {
-    e.preventDefault();
-    window.location.href = "about:blank";
-});
-
-// مراقبة تغيير عنوان الصفحة
-let currentUrl = window.location.href;
-setInterval(function() {
-    if (window.location.href !== currentUrl) {
-        window.location.href = "about:blank";
-    }
-}, 100);
-</script>
-"""
-
-st.markdown(protection_js, unsafe_allow_html=True)
-
-# إدخال الكود من المستخدم
 code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
 
-# معالجة الرابط وتحويله إلى preview
 if link and "view" in link:
     lim = link.find("view")
     Url = link[:lim] + "preview"
 else:
     Url = None
 
-# JavaScript لإخفاء واجهة Google Drive
 hide_js = """
-    <script>
-        function hideDriveUI() {
-            let iframe = document.querySelector("iframe");
-            if (iframe) {
-                let iframeWindow = iframe.contentWindow;
-                if (iframeWindow) {
-                    let iframeDoc = iframeWindow.document;
-                    if (iframeDoc) {
-                        let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
-                        elements.forEach(el => el.style.display = 'none');
-                    }
-                }
-            }
+<script>
+function hideDriveUI() {
+    const iframe = document.querySelector("iframe");
+    if (iframe) {
+        try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
+            elements.forEach(el => el.style.display = 'none');
+        } catch (e) {
+            console.log("Cannot access iframe due to CORS");
         }
-        setInterval(hideDriveUI, 1000);
-    </script>
+    }
+}
+setInterval(hideDriveUI, 1000);
+</script>
 """
 
-# عرض الـ PDF داخل Iframe
 pdf_display = f"""
-    <iframe src="{Url}" width="700" height="900"
-     style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
-    {hide_js}
+<div id="pdf-container">
+    <iframe src="{Url}" width="700" height="900" style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
+</div>
+{hide_js}
 """
 
-# زر عرض الملف
 button = st.button("Preview")
 if button:
     with st.spinner("In Progress..."):
