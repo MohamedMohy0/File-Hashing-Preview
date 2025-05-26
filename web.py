@@ -1,40 +1,6 @@
 import streamlit as st
-
-# يجب أن يكون هذا أول أمر يستخدم Streamlit
-st.set_page_config(page_title="File Hashing")
-
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
-import streamlit.components.v1 as components
-
-# سكربت لتعطيل النقر يمين، F12، وبعض الاختصارات
-components.html("""
-    <script>
-        // Disable right-click
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        // Disable F12, Ctrl+Shift+I/J/C/U
-        document.onkeydown = function(e) {
-            if (
-                e.keyCode == 123 || // F12
-                (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
-                (e.ctrlKey && e.key.toLowerCase() === 'u')
-            ) {
-                return false;
-            }
-        };
-
-        // Disable all <a> tag default behavior (prevent opening in new tab)
-        document.addEventListener("DOMContentLoaded", function() {
-            const links = document.querySelectorAll("a");
-            links.forEach(link => {
-                link.addEventListener("click", function(e) {
-                    e.preventDefault();
-                });
-            });
-        });
-    </script>
-""", height=0)
 
 # تحقق من أن Firebase تم تهيئته مسبقًا
 if not firebase_admin._apps:
@@ -66,12 +32,14 @@ def get_drive_link(code):
     new_number = number - 1
     doc_ref_hashes.update({"remain": new_number})
 
+
     data = doc_hashes.to_dict()
     link = data.get("drivelink", "No drive link found")
 
     return link, f"Remaining tries: {new_number}"
 
-# تنسيق إخفاء عناصر Streamlit الافتراضية (القائمة، الهيدر، الفوتر)
+# إعدادات الصفحة
+st.set_page_config(page_title="File Hashing")
 hide_st_style = """
     <style>
     #MainMenu {visibility: hidden;}
@@ -91,6 +59,8 @@ st.markdown(
 # إدخال الكود من المستخدم
 code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
+
+# عرض رسالة عدد المحاولات أو الخطأ
 
 # معالجة الرابط وتحويله إلى preview
 if link and "view" in link:
