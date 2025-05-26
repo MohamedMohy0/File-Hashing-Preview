@@ -72,22 +72,6 @@ else:
 # JavaScript لإخفاء واجهة Google Drive
 hide_js = """
 <script>
-    // ========== إخفاء واجهة Google Drive ==========
-    function hideDriveUI() {
-        let iframe = document.querySelector("iframe");
-        if (iframe) {
-            let iframeWindow = iframe.contentWindow;
-            if (iframeWindow) {
-                let iframeDoc = iframeWindow.document;
-                if (iframeDoc) {
-                    let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
-                    elements.forEach(el => el.style.display = 'none');
-                }
-            }
-        }
-    }
-    setInterval(hideDriveUI, 1000);
-
     // ========== منع الزر الأيمن ==========
     document.addEventListener('contextmenu', event => event.preventDefault());
 
@@ -113,6 +97,7 @@ hide_js = """
     });
 </script>
 """
+
 
 # عرض داخل IFrame
 pdf_display = f"""
