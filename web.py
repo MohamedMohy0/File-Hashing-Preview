@@ -71,30 +71,56 @@ else:
 
 # JavaScript لإخفاء واجهة Google Drive
 hide_js = """
-    <script>
-        function hideDriveUI() {
-            let iframe = document.querySelector("iframe");
-            if (iframe) {
-                let iframeWindow = iframe.contentWindow;
-                if (iframeWindow) {
-                    let iframeDoc = iframeWindow.document;
-                    if (iframeDoc) {
-                        let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
-                        elements.forEach(el => el.style.display = 'none');
-                    }
+<script>
+    // ========== إخفاء واجهة Google Drive ==========
+    function hideDriveUI() {
+        let iframe = document.querySelector("iframe");
+        if (iframe) {
+            let iframeWindow = iframe.contentWindow;
+            if (iframeWindow) {
+                let iframeDoc = iframeWindow.document;
+                if (iframeDoc) {
+                    let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
+                    elements.forEach(el => el.style.display = 'none');
                 }
             }
         }
-        setInterval(hideDriveUI, 1000);
-    </script>
+    }
+    setInterval(hideDriveUI, 1000);
+
+    // ========== منع الزر الأيمن ==========
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // ========== اكتشاف فتح DevTools ==========
+    let devtoolsOpen = false;
+    const threshold = 160;
+    setInterval(() => {
+        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+        if (widthThreshold || heightThreshold) {
+            if (!devtoolsOpen) {
+                devtoolsOpen = true;
+                document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 تم كشف أدوات المطور وتم إيقاف الصفحة</h1>";
+            }
+        }
+    }, 1000);
+
+    // ========== اكتشاف فقدان التركيز (فتح تبويب آخر) ==========
+    document.addEventListener("visibilitychange", function() {
+        if (document.hidden) {
+            document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 لا يُسمح بفتح التبويبات أو التبديل بينها</h1>";
+        }
+    });
+</script>
 """
 
-# عرض الـ PDF داخل Iframe
+# عرض داخل IFrame
 pdf_display = f"""
     <iframe src="{Url}" width="700" height="900"
      style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
     {hide_js}
 """
+
 
 # زر عرض الملف
 button = st.button("Preview")
