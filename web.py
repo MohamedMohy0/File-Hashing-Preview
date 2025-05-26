@@ -1,127 +1,107 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
-from streamlit.components.v1 import html
-import time
 
-# تهيئة Firebase
+# تحقق من أن Firebase تم تهيئته مسبقًا
 if not firebase_admin._apps:
     cred_dict = st.secrets["gcp_service_account"]
-    cred = credentials.Certificate(dict(cred_dict))
+    cred = credentials.Certificate(dict(cred_dict))  # تحويل من TOML إلى dict
     firebase_app = initialize_app(cred)
 
 db = firestore.client()
 
+# دالة جلب الرابط وعدد المحاولات وتحديث الرقم
 def get_drive_link(code):
     if not code:
         return None, "No code entered"
 
-    doc_ref = db.collection("Hashes").document(code)
-    doc = doc_ref.get()
+    # جلب مستند من مجموعة Hashes
+    doc_ref_hashes = db.collection("Hashes").document(code)
+    doc_hashes = doc_ref_hashes.get()
     
-    if not doc.exists:
-        return None, "كود غير صحيح"
+    if not doc_hashes.exists:
+        return None, "Document not found in Hashes"
 
-    data = doc.to_dict()
-    remaining = data.get("remain", 0)
+    data_num = doc_hashes.to_dict()
+    number = data_num.get("remain", 0)
 
-    if remaining <= 0:
-        return None, "انتهت عدد المحاولات المتاحة"
+    if number <= 0:
+        return None, "The code is not valid now"
 
-    # تحديث عدد المحاولات
-    doc_ref.update({"remain": remaining - 1})
-    return data.get("drivelink"), f"المحاولات المتبقية: {remaining - 1}"
+    # إذا كان الرقم أكبر من صفر، ننقصه ونحدث المستند
+    new_number = number - 1
+    doc_ref_hashes.update({"remain": new_number})
+
+
+    data = doc_hashes.to_dict()
+    link = data.get("drivelink", "No drive link found")
+
+    return link, f"Remaining tries: {new_number}"
 
 # إعدادات الصفحة
-st.set_page_config(page_title="عرض الملف", layout="centered")
-st.markdown("""
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="File Hashing")
+hide_st_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# كود الحماية الأساسي
-protection_js = """
-<script>
-// منع فتح أدوات المطور
-function blockDevTools() {
-    function killDevTools() {
-        document.body.innerHTML = '<h1 style="color:red;text-align:center;">غير مسموح فتح أدوات المطور</h1>';
-        window.location.href = "about:blank";
-        return false;
-    }
-    
-    // منع فتح الأدوات عبر الأزرار
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'F12' || 
-            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) || 
-            (e.ctrlKey && e.key === 'U')) {
-            e.preventDefault();
-            killDevTools();
-        }
-    });
-    
-    // منع النقر الأيمن
-    document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        killDevTools();
-    });
-    
-    // مراقبة تغيير حجم النافذة
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    
-    setInterval(function() {
-        if (window.innerWidth !== width || window.innerHeight !== height) {
-            killDevTools();
-        }
-    }, 200);
-    
-    // منع مغادرة الصفحة
-    window.onbeforeunload = function() {
-        return "هل أنت متأكد من المغادرة؟";
-    };
-}
+st.markdown(
+    """
+    <h1 style="text-align: center;">File preview</h1>
+    """,
+    unsafe_allow_html=True
+)
 
-// تشغيل الحماية بعد تحميل الصفحة
-window.onload = blockDevTools;
-</script>
+# إدخال الكود من المستخدم
+code = st.text_input("Enter The Code :")
+link, message = get_drive_link(code)
+
+# عرض رسالة عدد المحاولات أو الخطأ
+
+# معالجة الرابط وتحويله إلى preview
+if link and "view" in link:
+    lim = link.find("view")
+    Url = link[:lim] + "preview"
+else:
+    Url = None
+
+# JavaScript لإخفاء واجهة Google Drive
+hide_js = """
+    <script>
+        function hideDriveUI() {
+            let iframe = document.querySelector("iframe");
+            if (iframe) {
+                let iframeWindow = iframe.contentWindow;
+                if (iframeWindow) {
+                    let iframeDoc = iframeWindow.document;
+                    if (iframeDoc) {
+                        let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
+                        elements.forEach(el => el.style.display = 'none');
+                    }
+                }
+            }
+        }
+        setInterval(hideDriveUI, 1000);
+    </script>
 """
 
-# حقن كود الحماية
-html(protection_js, height=0, width=0)
+# عرض الـ PDF داخل Iframe
+pdf_display = f"""
+    <iframe src="{Url}" width="700" height="900"
+     style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
+    {hide_js}
+"""
 
-# واجهة المستخدم
-st.markdown("<h1 style='text-align:center;'>عرض الملف</h1>", unsafe_allow_html=True)
-
-code = st.text_input("أدخل الكود:")
-if st.button("عرض الملف"):
-    if not code:
-        st.error("الرجاء إدخال الكود")
-    else:
-        with st.spinner("جاري التحضير..."):
-            link, message = get_drive_link(code)
-            
-            if link:
-                st.success(message)
-                
-                # تحويل رابط Google Drive إلى عرض مباشر
-                if "view" in link:
-                    preview_url = link.split("view")[0] + "preview"
-                else:
-                    preview_url = link
-                
-                # عرض الملف في iframe محمي
-                iframe_html = f"""
-                <div style="position:relative;overflow:hidden;padding-top:90%;">
-                    <iframe src="{preview_url}" 
-                            style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
-                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
-                    </iframe>
-                </div>
-                """
-                st.markdown(iframe_html, unsafe_allow_html=True)
-            else:
-                st.error(message)
+# زر عرض الملف
+button = st.button("Preview")
+if button:
+    with st.spinner("In Progress..."):
+        if Url:
+            st.info(message)
+            st.markdown(pdf_display, unsafe_allow_html=True)
+        else:
+            st.error("Invalid link or document not found.")
