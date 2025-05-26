@@ -72,41 +72,29 @@ else:
 # JavaScript لإخفاء واجهة Google Drive
 hide_js = """
 <script>
-    // إغلاق الصفحة عبر استبدال المحتوى برسالة حظر
-    function blockPage(reason) {
-        document.body.innerHTML = `<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 ${reason}</h1>`;
-    }
-
     // منع الزر الأيمن
     document.addEventListener('contextmenu', event => event.preventDefault());
 
-    // اكتشاف فتح DevTools
-    let devtoolsOpen = false;
-    const threshold = 160;
+    // كشف أدوات المطور (DevTools)
+    let threshold = 160;
     setInterval(() => {
-        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-        if (widthThreshold || heightThreshold) {
-            if (!devtoolsOpen) {
-                devtoolsOpen = true;
-                blockPage("تم كشف أدوات المطور وتم إيقاف الصفحة");
-            }
+        let widthDiff = window.outerWidth - window.innerWidth;
+        let heightDiff = window.outerHeight - window.innerHeight;
+        if (widthDiff > threshold || heightDiff > threshold) {
+            document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 Developer Tools Detected</h1>";
         }
     }, 1000);
 
-    // اكتشاف فقدان التركيز (مثل فتح تبويب آخر أو تصغير النافذة)
-    window.addEventListener("blur", () => blockPage("لا يُسمح بالخروج من الصفحة أو تغيير التبويب"));
-
-    // اكتشاف التبديل بين التبويبات (في بعض المتصفحات)
+    // إغلاق الصفحة أو مسحها عند تغيير التبويب
     document.addEventListener("visibilitychange", function() {
         if (document.hidden) {
-            blockPage("تم كشف تبديل التبويب 🚫");
+            document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 Tab Switching is Not Allowed</h1>";
         }
     });
 
-    // اكتشاف الخروج من الصفحة (بعض الحالات فقط)
-    window.addEventListener("pagehide", function() {
-        blockPage("🚫 لا يُسمح بمغادرة الصفحة");
+    // إغلاق عند فقدان التركيز (مثل تصغير النافذة أو التبديل)
+    window.addEventListener("blur", () => {
+        document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>🚫 Page focus lost</h1>";
     });
 </script>
 """
@@ -118,6 +106,7 @@ pdf_display = f"""
      style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
     {hide_js}
 """
+
 
 
 # زر عرض الملف
