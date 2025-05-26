@@ -1,6 +1,34 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
+import streamlit.components.v1 as components
+components.html("""
+    <script>
+        // Disable right-click
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // Disable F12, Ctrl+Shift+I/J/C/U
+        document.onkeydown = function(e) {
+            if (
+                e.keyCode == 123 || // F12
+                (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
+                (e.ctrlKey && e.key.toLowerCase() === 'u')
+            ) {
+                return false;
+            }
+        };
+
+        // Disable all <a> tag default behavior (prevent opening in new tab)
+        document.addEventListener("DOMContentLoaded", function() {
+            const links = document.querySelectorAll("a");
+            links.forEach(link => {
+                link.addEventListener("click", function(e) {
+                    e.preventDefault();
+                });
+            });
+        });
+    </script>
+""", height=0)
 
 # تحقق من أن Firebase تم تهيئته مسبقًا
 if not firebase_admin._apps:
