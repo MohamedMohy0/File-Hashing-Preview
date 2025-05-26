@@ -10,6 +10,7 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# دالة جلب الرابط وعدد المحاولات وتحديث الرقم
 def get_drive_link(code):
     if not code:
         return None, "No code entered"
@@ -34,6 +35,7 @@ def get_drive_link(code):
 
     return link, f"Remaining tries: {new_number}"
 
+# إعدادات الصفحة
 st.set_page_config(page_title="File Hashing")
 hide_st_style = """
     <style>
@@ -51,80 +53,92 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-code = st.text_input("Enter The Code :")
+# إضافة JavaScript للحماية
+protection_js = """
+<script>
+// مراقبة تغيير حجم النافذة (علامة على فتح أدوات المطور)
+let initialWidth = window.innerWidth;
+let initialHeight = window.innerHeight;
 
+setInterval(function() {
+    if (window.innerWidth !== initialWidth || window.innerHeight !== initialHeight) {
+        window.location.href = "about:blank";
+    }
+}, 100);
+
+// منع فتح أدوات المطور باستخدام اختصار لوحة المفاتيح
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+        (e.ctrlKey && e.shiftKey && e.key === 'J') || 
+        (e.ctrlKey && e.key === 'U')) {
+        e.preventDefault();
+        window.location.href = "about:blank";
+    }
+});
+
+// منع النقر بزر الماوس الأيمن
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    window.location.href = "about:blank";
+});
+
+// مراقبة تغيير عنوان الصفحة
+let currentUrl = window.location.href;
+setInterval(function() {
+    if (window.location.href !== currentUrl) {
+        window.location.href = "about:blank";
+    }
+}, 100);
+</script>
+"""
+
+st.markdown(protection_js, unsafe_allow_html=True)
+
+# إدخال الكود من المستخدم
+code = st.text_input("Enter The Code :")
 link, message = get_drive_link(code)
 
+# معالجة الرابط وتحويله إلى preview
 if link and "view" in link:
     lim = link.find("view")
     Url = link[:lim] + "preview"
 else:
     Url = None
 
+# JavaScript لإخفاء واجهة Google Drive
 hide_js = """
-<script>
-    // منع الزر الأيمن
-    document.addEventListener('contextmenu', e => e.preventDefault());
-
-    // دالة لإغلاق الصفحة (إعادة التوجيه لصفحة فارغة)
-    function closePage() {
-        window.location.href = "about:blank";
-    }
-
-    // كشف أدوات المطور
-    const threshold = 160;
-    setInterval(() => {
-        const widthDiff = window.outerWidth - window.innerWidth;
-        const heightDiff = window.outerHeight - window.innerHeight;
-        if (widthDiff > threshold || heightDiff > threshold) {
-            alert("تم اكتشاف محاولة فتح أدوات المطور! سيتم إغلاق الصفحة.");
-            closePage();
-        }
-    }, 1000);
-
-    // اكتشاف تبديل التبويب أو فقدان التركيز
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-            alert("تم تبديل التبويب! سيتم إغلاق الصفحة.");
-            closePage();
-        }
-    });
-
-    window.addEventListener("blur", () => {
-        alert("تم فقدان تركيز الصفحة! سيتم إغلاق الصفحة.");
-        closePage();
-    });
-
-    // إخفاء واجهة Google Drive داخل iframe
-    function hideDriveUI() {
-        let iframe = document.querySelector("iframe");
-        if (iframe) {
-            let iframeWindow = iframe.contentWindow;
-            if (iframeWindow) {
-                let iframeDoc = iframeWindow.document;
-                if (iframeDoc) {
-                    let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
-                    elements.forEach(el => el.style.display = 'none');
+    <script>
+        function hideDriveUI() {
+            let iframe = document.querySelector("iframe");
+            if (iframe) {
+                let iframeWindow = iframe.contentWindow;
+                if (iframeWindow) {
+                    let iframeDoc = iframeWindow.document;
+                    if (iframeDoc) {
+                        let elements = iframeDoc.querySelectorAll('a, button, .ndfHFb-c4YZDc');
+                        elements.forEach(el => el.style.display = 'none');
+                    }
                 }
             }
         }
-    }
-    setInterval(hideDriveUI, 1000);
-</script>
+        setInterval(hideDriveUI, 1000);
+    </script>
 """
 
-button = st.button("Preview")
+# عرض الـ PDF داخل Iframe
+pdf_display = f"""
+    <iframe src="{Url}" width="700" height="900"
+     style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
+    {hide_js}
+"""
 
+# زر عرض الملف
+button = st.button("Preview")
 if button:
-    if Url:
-        st.info(message)
-        pdf_display = f"""
-            <iframe src="{Url}" width="700" height="900"
-             style="border: none;" sandbox="allow-scripts allow-same-origin"></iframe>
-            {hide_js}
-        """
-        st.markdown(pdf_display, unsafe_allow_html=True)
-    else:
-        st.error("Invalid link or document not found.")
-elif code and not button:
-    st.info("اضغط على زر Preview لعرض الملف.")
+    with st.spinner("In Progress..."):
+        if Url:
+            st.info(message)
+            st.markdown(pdf_display, unsafe_allow_html=True)
+        else:
+            st.error("Invalid link or document not found.")
